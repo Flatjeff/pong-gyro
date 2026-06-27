@@ -60,7 +60,7 @@
 
 <!-- ACCUEIL -->
 <div id="sHome" class="screen">
-  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v5</div></div>
+  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v6</div></div>
   <div><div class="best-label">Meilleur score</div><div class="best-value" id="homeBest">0</div></div>
   <div style="display:flex;flex-direction:column;gap:.8rem;width:100%;max-width:280px">
     <button class="btn" id="btnStart">Jouer</button>
@@ -132,7 +132,7 @@ function buildCamera(w, h) {
   // Hauteur calculée pour que la boîte remplisse exactement le cadre
   const asp = w / h;
   // Portrait : caméra plus haute
-  const camY = asp < 1 ? 38 : 30;
+  const camY = asp < 1 ? 58 : 44;
   camera.position.set(0, camY, 0.001); // 0.001 évite gimbal lock lookAt
   camera.lookAt(0, 0, 0);
   camera.updateProjectionMatrix();
@@ -476,9 +476,7 @@ function update() {
 
   updateBallMesh();
 
-  // Rotation légère de la balle (cosmétique)
-  ballMesh.rotation.x += ballVZ * 0.4;
-  ballMesh.rotation.z -= ballVX * 0.4;
+  // Cube glisse au sol sans rotation
 }
 
 function hitPaddle(px, side) {
