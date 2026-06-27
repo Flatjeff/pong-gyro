@@ -9,11 +9,11 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#0d0d0d;
-    --accent:#e0ff4f;
-    --dim:#444455;
-    --white:#f0f0f0;
-    --danger:#ff4f4f;
+    --bg:#f0f2f5;
+    --accent:#1a1a2e;
+    --dim:#9999aa;
+    --white:#1a1a2e;
+    --danger:#cc3333;
   }
   html,body { width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Courier New',monospace;touch-action:none;user-select:none; }
 
@@ -22,7 +22,7 @@
   .screen {
     position:fixed;inset:0;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:1.8rem;padding:2rem;
-    text-align:center;z-index:10;background:rgba(13,13,13,0.92);
+    text-align:center;z-index:10;background:rgba(240,242,245,0.94);
     backdrop-filter:blur(4px);transition:opacity .3s;
   }
   .screen.hidden{opacity:0;pointer-events:none;}
@@ -32,7 +32,7 @@
   .best-label{font-size:clamp(.65rem,2.8vw,.85rem);color:var(--dim);letter-spacing:.1em;}
   .best-value{font-size:clamp(1.4rem,6vw,2.2rem);color:var(--white);font-weight:700;}
 
-  .btn{background:var(--accent);color:#0d0d0d;border:none;padding:.9rem 2.2rem;font-family:inherit;font-size:clamp(.85rem,3.8vw,1rem);font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:transform .1s;-webkit-tap-highlight-color:transparent;width:100%;max-width:280px;}
+  .btn{background:var(--accent);color:#f0f2f5;border:none;padding:.9rem 2.2rem;font-family:inherit;font-size:clamp(.85rem,3.8vw,1rem);font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:transform .1s;-webkit-tap-highlight-color:transparent;width:100%;max-width:280px;}
   .btn:active{transform:scale(.96);}
   .btn.sec{background:transparent;color:var(--dim);border:1px solid var(--dim);font-size:clamp(.7rem,3vw,.85rem);}
   .hint{font-size:clamp(.65rem,2.8vw,.8rem);color:var(--dim);max-width:260px;line-height:1.7;}
@@ -60,7 +60,7 @@
 
 <!-- ACCUEIL -->
 <div id="sHome" class="screen">
-  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v2.1</div></div>
+  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v3</div></div>
   <div><div class="best-label">Meilleur score</div><div class="best-value" id="homeBest">0</div></div>
   <div style="display:flex;flex-direction:column;gap:.8rem;width:100%;max-width:280px">
     <button class="btn" id="btnStart">Jouer</button>
@@ -115,10 +115,10 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.setClearColor(0x0d0d0d);
+renderer.setClearColor(0xf0f2f5);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x0d0d0d, 30, 55);
+scene.fog = new THREE.Fog(0xf0f2f5, 30, 55);
 
 // Caméra — vue quasi-dessus légèrement inclinée
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
@@ -149,10 +149,10 @@ onResize();
 // ═══════════════════════════════════════
 //  LUMIÈRES
 // ═══════════════════════════════════════
-const ambient = new THREE.AmbientLight(0xffffff, 0.45);
+const ambient = new THREE.AmbientLight(0xdde8f5, 0.75);
 scene.add(ambient);
 
-const dirLight = new THREE.DirectionalLight(0xfff8e8, 1.1);
+const dirLight = new THREE.DirectionalLight(0xe8eeff, 0.85);
 dirLight.position.set(4, 16, 8);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(1024, 1024);
@@ -166,7 +166,7 @@ dirLight.shadow.bias = -0.001;
 scene.add(dirLight);
 
 // Lumière d'appoint douce de bas
-const fillLight = new THREE.DirectionalLight(0xaaccff, 0.2);
+const fillLight = new THREE.DirectionalLight(0xc8d8f8, 0.35);
 fillLight.position.set(-3, 5, -6);
 scene.add(fillLight);
 
@@ -181,47 +181,41 @@ function makeWoodTexture() {
   cv.width = cv.height = size;
   const cx = cv.getContext('2d');
 
-  // Base bois vert foncé (table de ping-pong)
-  const base = cx.createLinearGradient(0, 0, size, size);
-  base.addColorStop(0,   '#1a4a1a');
-  base.addColorStop(0.3, '#1e5220');
-  base.addColorStop(0.6, '#174517');
-  base.addColorStop(1,   '#1b4c1b');
-  cx.fillStyle = base;
+  // Base blanche légèrement froide
+  cx.fillStyle = '#f4f6fa';
   cx.fillRect(0, 0, size, size);
 
-  // Veines bois subtiles
-  for (let i = 0; i < 18; i++) {
+  // Micro-grain très subtil
+  for (let i = 0; i < 30; i++) {
     const y = Math.random() * size;
-    const grad = cx.createLinearGradient(0, y-2, size, y+2);
-    grad.addColorStop(0,   'rgba(0,0,0,0)');
-    grad.addColorStop(0.2, 'rgba(0,0,0,0.07)');
-    grad.addColorStop(0.5, 'rgba(0,0,0,0.12)');
-    grad.addColorStop(0.8, 'rgba(0,0,0,0.07)');
-    grad.addColorStop(1,   'rgba(0,0,0,0)');
+    const grad = cx.createLinearGradient(0, y-1, size, y+1);
+    grad.addColorStop(0,   'rgba(180,195,220,0)');
+    grad.addColorStop(0.4, 'rgba(180,195,220,0.06)');
+    grad.addColorStop(0.6, 'rgba(180,195,220,0.06)');
+    grad.addColorStop(1,   'rgba(180,195,220,0)');
     cx.fillStyle = grad;
-    cx.fillRect(0, y-3, size, 6);
+    cx.fillRect(0, y-2, size, 4);
   }
 
-  // Reflet central
-  const shine = cx.createRadialGradient(size*.5, size*.5, 10, size*.5, size*.5, size*.6);
-  shine.addColorStop(0,   'rgba(255,255,255,0.06)');
-  shine.addColorStop(1,   'rgba(255,255,255,0)');
-  cx.fillStyle = shine;
+  // Vignette froide sur les bords
+  const vign = cx.createRadialGradient(size/2, size/2, size*0.2, size/2, size/2, size*0.8);
+  vign.addColorStop(0, 'rgba(220,230,245,0)');
+  vign.addColorStop(1, 'rgba(200,215,235,0.18)');
+  cx.fillStyle = vign;
   cx.fillRect(0, 0, size, size);
 
   return new THREE.CanvasTexture(cv);
 }
 
 const tableGeo = new THREE.BoxGeometry(TW, 0.18, TL);
-const tableMat = new THREE.MeshLambertMaterial({ map: makeWoodTexture() });
+const tableMat = new THREE.MeshLambertMaterial({ map: makeWoodTexture(), color: 0xffffff });
 const tableMesh = new THREE.Mesh(tableGeo, tableMat);
 tableMesh.position.y = -0.09;
 tableMesh.receiveShadow = true;
 scene.add(tableMesh);
 
 // Bordure table
-const edgeMat = new THREE.MeshLambertMaterial({ color: 0x8B5E1A });
+const edgeMat = new THREE.MeshLambertMaterial({ color: 0xe8ecf4 });
 [[TW+.06, 0.22, 0.28, 0, 0, TL/2+.14],[TW+.06, 0.22, 0.28, 0, 0, -TL/2-.14],
  [0.28, 0.22, TL, TW/2+.14, 0, 0],  [0.28, 0.22, TL, -TW/2-.14, 0, 0]
 ].forEach(([w,h,d,x,y,z]) => {
@@ -234,7 +228,7 @@ const edgeMat = new THREE.MeshLambertMaterial({ color: 0x8B5E1A });
 // Lignes blanches sur la table
 function addLine(w, d, x, z) {
   const geo = new THREE.PlaneGeometry(w, d);
-  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+  const mat = new THREE.MeshLambertMaterial({ color: 0xb0bcd8, transparent: true, opacity: 0.7 });
   const m = new THREE.Mesh(geo, mat);
   m.rotation.x = -Math.PI / 2;
   m.position.set(x, 0.01, z);
@@ -257,7 +251,7 @@ const netGroup = new THREE.Group();
 [TW/2 + 0.1, -TW/2 - 0.1].forEach(x => {
   const p = new THREE.Mesh(
     new THREE.CylinderGeometry(0.06, 0.06, NET_H + 0.1, 8),
-    new THREE.MeshLambertMaterial({ color: 0xcccccc })
+    new THREE.MeshLambertMaterial({ color: 0xdde3f0 })
   );
   p.position.set(x, NET_H/2, 0);
   p.castShadow = true;
@@ -265,7 +259,7 @@ const netGroup = new THREE.Group();
 });
 
 // Filet (grille fine)
-const netMat = new THREE.MeshLambertMaterial({ color: 0xdddddd, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+const netMat = new THREE.MeshLambertMaterial({ color: 0xe8edf8, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
 // Plan principal filet
 const netMesh = new THREE.Mesh(new THREE.PlaneGeometry(TW + 0.2, NET_H), netMat);
 netMesh.position.set(0, NET_H/2, 0);
@@ -275,7 +269,7 @@ netGroup.add(netMesh);
 // Bande blanche haut du filet
 const topBand = new THREE.Mesh(
   new THREE.BoxGeometry(TW + 0.3, 0.05, 0.04),
-  new THREE.MeshLambertMaterial({ color: 0xffffff })
+  new THREE.MeshLambertMaterial({ color: 0xf0f3fa })
 );
 topBand.position.set(0, NET_H + 0.025, 0);
 netGroup.add(topBand);
@@ -297,15 +291,15 @@ function makePaddle(color) {
   // Tranche blanche
   const edge = new THREE.Mesh(
     new THREE.BoxGeometry(PW + 0.02, PH * 0.4, 0.04),
-    new THREE.MeshLambertMaterial({ color: 0xffffff })
+    new THREE.MeshLambertMaterial({ color: 0xf0f3fa })
   );
   edge.position.z = PD/2 + 0.02;
   g.add(edge);
   return g;
 }
 
-const paddleBot = makePaddle(0xe03030); // rouge joueur bas
-const paddleTop = makePaddle(0x3060e0); // bleu joueur haut
+const paddleBot = makePaddle(0xfafbfd); // blanc joueur bas
+const paddleTop = makePaddle(0xfafbfd); // blanc joueur haut
 paddleBot.position.set(0, PH/2 + 0.01,  TL/2 - PMARG);
 paddleTop.position.set(0, PH/2 + 0.01, -TL/2 + PMARG);
 scene.add(paddleBot);
@@ -315,14 +309,14 @@ scene.add(paddleTop);
 //  BALLE
 // ═══════════════════════════════════════
 const ballGeo = new THREE.SphereGeometry(BR, 20, 20);
-const ballMat = new THREE.MeshLambertMaterial({ color: 0xf5f5e8 });
+const ballMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
 const ballMesh = new THREE.Mesh(ballGeo, ballMat);
 ballMesh.castShadow = true;
 scene.add(ballMesh);
 
 // Ombre projetée au sol (cercle plat)
 const shadowGeo = new THREE.CircleGeometry(BR * 0.8, 16);
-const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 });
+const shadowMat = new THREE.MeshBasicMaterial({ color: 0x8899bb, transparent: true, opacity: 0.28 });
 const ballShadow = new THREE.Mesh(shadowGeo, shadowMat);
 ballShadow.rotation.x = -Math.PI/2;
 ballShadow.position.y = 0.005;
@@ -330,7 +324,7 @@ scene.add(ballShadow);
 
 // Halo léger sous la balle
 const haloGeo = new THREE.CircleGeometry(BR * 1.8, 16);
-const haloMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06 });
+const haloMat = new THREE.MeshBasicMaterial({ color: 0xaabbdd, transparent: true, opacity: 0.08 });
 const ballHalo = new THREE.Mesh(haloGeo, haloMat);
 ballHalo.rotation.x = -Math.PI/2;
 ballHalo.position.y = 0.004;
