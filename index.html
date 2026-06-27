@@ -60,7 +60,7 @@
 
 <!-- ACCUEIL -->
 <div id="sHome" class="screen">
-  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v2</div></div>
+  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v2.1</div></div>
   <div><div class="best-label">Meilleur score</div><div class="best-value" id="homeBest">0</div></div>
   <div style="display:flex;flex-direction:column;gap:.8rem;width:100%;max-width:280px">
     <button class="btn" id="btnStart">Jouer</button>
@@ -99,7 +99,7 @@ const PD = 0.35;     // profondeur raquette
 const PH = 0.18;     // épaisseur raquette
 const BR = 0.22;     // rayon balle
 const NET_H = 0.28;  // hauteur filet
-const PMARG = 1.4;   // marge raquette depuis bord
+const PMARG = 2.2;   // marge raquette depuis bord
 const GYRO_SENS = 3.8;
 const GYRO_SMOOTH = 0.10;
 const SPEED_INIT = 0.09;
@@ -121,16 +121,16 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x0d0d0d, 30, 55);
 
 // Caméra — vue quasi-dessus légèrement inclinée
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
 // Portrait mobile : on recule plus
 function setCameraForAspect() {
   const asp = window.innerWidth / window.innerHeight;
   if (asp < 1) {
     // Portrait
-    camera.position.set(0, 22, 8);
+    camera.position.set(0, 26, 13);
   } else {
     // Paysage
-    camera.position.set(0, 18, 6);
+    camera.position.set(0, 20, 9);
   }
   camera.lookAt(0, 0, 0);
   camera.updateProjectionMatrix();
