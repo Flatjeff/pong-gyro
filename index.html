@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+<title>Pong Gyro</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --court: #0f0f1a;
+    --line: #1a1a2e;
+    --accent: #e0ff4f;
+    --white: #f0f0f0;
+    --dim: #555566;
+    --danger: #ff4f4f;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: 'Courier New', monospace;
+    touch-action: none;
+    user-select: none;
+  }
+
+  /* ── ÉCRANS ── */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem;
+    text-align: center;
+    z-index: 10;
+    background: var(--bg);
+    transition: opacity 0.3s;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  .title {
+    font-size: clamp(2.8rem, 12vw, 5rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+    line-height: 0.9;
+  }
+  .subtitle {
+    font-size: clamp(0.75rem, 3.5vw, 1rem);
+    color: var(--dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .best-label {
+    font-size: clamp(0.7rem, 3vw, 0.9rem);
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+  .best-value {
+    font-size: clamp(1.5rem, 7vw, 2.5rem);
+    color: var(--white);
+    font-weight: 700;
+  }
+
+  .btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 1rem 2.5rem;
+    font-family: inherit;
+    font-size: clamp(0.9rem, 4vw, 1.1rem);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: transform 0.1s, background 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.secondary {
+    background: transparent;
+    color: var(--dim);
+    border: 1px solid var(--dim);
+    font-size: clamp(0.75rem, 3.2vw, 0.9rem);
+  }
+
+  .ios-notice {
+    font-size: clamp(0.7rem, 3vw, 0.85rem);
+    color: var(--dim);
+    max-width: 280px;
+    line-height: 1.6;
+  }
+
+  /* ── CANVAS ── */
+  #gameCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  /* ── HUD ── */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #hud.hidden { display: none; }
+
+  .hud-block { text-align: center; }
+  .hud-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .hud-value {
+    font-size: clamp(1.4rem, 6vw, 2rem);
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .hud-value.best { color: var(--dim); font-size: clamp(1rem, 4vw, 1.4rem); }
+
+  /* ── COMBO FLASH ── */
+  #comboFlash {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(2rem, 10vw, 3.5rem);
+    font-weight: 900;
+    color: var(--accent);
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+    transition: opacity 0.1s;
+    letter-spacing: -0.02em;
+  }
+
+  /* ── GAME OVER ── */
+  #screenOver .score-display {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  #finalScore {
+    font-size: clamp(3rem, 15vw, 6rem);
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+  }
+  #finalLabel {
+    font-size: clamp(0.7rem, 3vw, 0.9rem);
+    color: var(--dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  #newRecord {
+    font-size: clamp(0.8rem, 3.5vw, 1rem);
+    color: var(--danger);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    min-height: 1.2em;
+  }
+
+  /* ── BARRE DE VITESSE ── */
+  #speedBar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--line);
+    z-index: 5;
+    pointer-events: none;
+  }
+  #speedFill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.3s, background 0.3s;
+  }
+  #speedBar.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ── ÉCRAN ACCUEIL ── -->
+<div id="screenHome" class="screen">
+  <div>
+    <div class="title">PONG<br>GYRO</div>
+    <div class="subtitle">Coopératif · 2 joueurs</div>
+  </div>
+  <div class="hud-block">
+    <div class="best-label">Meilleur score</div>
+    <div class="best-value" id="homeBest">0</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:0.8rem;width:100%;max-width:280px">
+    <button class="btn" id="btnStart">Jouer</button>
+    <button class="btn secondary" id="btnGyroEnable" style="display:none">Autoriser le gyroscope (iOS)</button>
+  </div>
+  <div class="ios-notice" id="iosNotice" style="display:none">
+    Sur iOS, appuie sur "Autoriser le gyroscope" avant de jouer. Tiens le téléphone à deux mains, verticalement.
+  </div>
+  <div class="ios-notice" style="display:block">
+    Tenez le téléphone à deux mains.<br>Inclinez ensemble pour bouger les raquettes.
+  </div>
+</div>
+
+<!-- ── ÉCRAN GAME OVER ── -->
+<div id="screenOver" class="screen hidden">
+  <div class="score-display">
+    <div class="best-label">Échanges réussis</div>
+    <div id="finalScore">0</div>
+    <div id="newRecord"></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:0.8rem;width:100%;max-width:280px">
+    <button class="btn" id="btnRestart">Rejouer</button>
+    <button class="btn secondary" id="btnHome">Accueil</button>
+  </div>
+</div>
+
+<!-- ── CANVAS ── -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- ── HUD ── -->
+<div id="hud" class="hidden">
+  <div class="hud-block">
+    <div class="hud-label">Record</div>
+    <div class="hud-value best" id="hudBest">0</div>
+  </div>
+  <div class="hud-block">
+    <div class="hud-label">Échanges</div>
+    <div class="hud-value" id="hudScore">0</div>
+  </div>
+</div>
+
+<!-- ── COMBO FLASH ── -->
+<div id="comboFlash"></div>
+
+<!-- ── BARRE VITESSE ── -->
+<div id="speedBar" class="hidden"><div id="speedFill"></div></div>
+
+<script>
+// ════════════════════════════════════
+//  CONSTANTES & CONFIG
+// ════════════════════════════════════
+const PADDLE_H_RATIO  = 0.018;  // épaisseur raquette / hauteur écran
+const PADDLE_W_RATIO  = 0.38;   // largeur raquette / largeur écran
+const PADDLE_MARGIN   = 0.10;   // distance bord haut/bas / hauteur écran
+const BALL_R_RATIO    = 0.022;  // rayon balle / largeur écran
+const BALL_SPEED_INIT = 0.007;  // vitesse initiale / hauteur écran par frame
+const BALL_SPEED_INC  = 0.00008;// accélération par échange
+const BALL_SPEED_MAX  = 0.022;
+const GYRO_SENS       = 3.5;    // sensibilité gyro
+const GYRO_SMOOTHING  = 0.12;   // lissage (0=figé, 1=instantané)
+const COMBO_MILESTONES= [5, 10, 20, 30, 50, 75, 100];
+
+// ════════════════════════════════════
+//  ÉTAT
+// ════════════════════════════════════
+const canvas = document.getElementById('gameCanvas');
+const ctx    = canvas.getContext('2d');
+
+let W, H;          // dimensions canvas
+let gameActive = false;
+let bestScore  = parseInt(localStorage.getItem('pongGyroBest') || '0');
+
+let ball, paddleBottom, paddleTop;
+let score, ballSpeedBase;
+let gyroGamma = 0;     // valeur brute
+let gyroSmooth = 0;    // valeur lissée
+let gyroAvailable = false;
+let animId;
+
+// ════════════════════════════════════
+//  RESIZE
+// ════════════════════════════════════
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  if (gameActive) initPositions();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+
+// ════════════════════════════════════
+//  INIT JEU
+// ════════════════════════════════════
+function initGame() {
+  score = 0;
+  ballSpeedBase = BALL_SPEED_INIT;
+  gyroSmooth = 0;
+  initPositions();
+  updateHUD();
+}
+
+function initPositions() {
+  const pw = W * PADDLE_W_RATIO;
+  const ph = H * PADDLE_H_RATIO;
+  const pm = H * PADDLE_MARGIN;
+  const br = W * BALL_R_RATIO;
+
+  paddleBottom = { x: W/2 - pw/2, y: H - pm - ph, w: pw, h: ph };
+  paddleTop    = { x: W/2 - pw/2, y: pm,           w: pw, h: ph };
+
+  // direction aléatoire vers le bas ou vers le haut
+  const angle = (Math.random() * 0.6 + 0.2) * Math.PI; // entre 36° et 108°
+  const dir   = Math.random() < 0.5 ? 1 : -1;
+  const speed = ballSpeedBase * H;
+
+  ball = {
+    x: W/2, y: H/2,
+    r: br,
+    vx: Math.cos(angle) * speed * (Math.random() < 0.5 ? 1 : -1),
+    vy: Math.sin(angle) * speed * dir,
+  };
+}
+
+// ════════════════════════════════════
+//  GYROSCOPE
+// ════════════════════════════════════
+function startGyro() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          gyroAvailable = true;
+          window.addEventListener('deviceorientation', onGyro);
+        }
+      }).catch(console.error);
+  } else {
+    gyroAvailable = true;
+    window.addEventListener('deviceorientation', onGyro);
+  }
+}
+
+function onGyro(e) {
+  // gamma : inclinaison gauche/droite (-90 à 90)
+  if (e.gamma !== null) gyroGamma = e.gamma;
+}
+
+// ════════════════════════════════════
+//  MISE À JOUR
+// ════════════════════════════════════
+function update() {
+  if (!gameActive) return;
+
+  // Gyro → déplacement raquettes (miroir)
+  gyroSmooth += (gyroGamma - gyroSmooth) * GYRO_SMOOTHING;
+  const move = gyroSmooth * GYRO_SENS;
+
+  const pw = paddleBottom.w;
+
+  // Raquette bas
+  paddleBottom.x += move;
+  paddleBottom.x  = Math.max(0, Math.min(W - pw, paddleBottom.x));
+
+  // Raquette haut (même direction = miroir naturel)
+  paddleTop.x = paddleBottom.x;
+
+  // Balle
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  // Rebond murs gauche/droite
+  if (ball.x - ball.r < 0) {
+    ball.x  = ball.r;
+    ball.vx = Math.abs(ball.vx);
+  }
+  if (ball.x + ball.r > W) {
+    ball.x  = W - ball.r;
+    ball.vx = -Math.abs(ball.vx);
+  }
+
+  // Collision raquette BAS
+  if (ball.vy > 0 &&
+      ball.y + ball.r >= paddleBottom.y &&
+      ball.y + ball.r <= paddleBottom.y + paddleBottom.h + Math.abs(ball.vy) &&
+      ball.x >= paddleBottom.x &&
+      ball.x <= paddleBottom.x + paddleBottom.w) {
+    hitPaddle(paddleBottom, 'bottom');
+  }
+
+  // Collision raquette HAUT
+  if (ball.vy < 0 &&
+      ball.y - ball.r <= paddleTop.y + paddleTop.h &&
+      ball.y - ball.r >= paddleTop.y - Math.abs(ball.vy) &&
+      ball.x >= paddleTop.x &&
+      ball.x <= paddleTop.x + paddleTop.w) {
+    hitPaddle(paddleTop, 'top');
+  }
+
+  // Balle sortie (haut ou bas) → game over
+  if (ball.y + ball.r < 0 || ball.y - ball.r > H) {
+    endGame();
+  }
+}
+
+function hitPaddle(paddle, side) {
+  score++;
+  ballSpeedBase = Math.min(BALL_SPEED_INIT + score * BALL_SPEED_INC, BALL_SPEED_MAX);
+
+  // Position relative sur la raquette (0 = gauche, 1 = droite)
+  const rel = (ball.x - paddle.x) / paddle.w;
+  const clamped = Math.max(0.05, Math.min(0.95, rel));
+
+  // Angle de sortie : de -65° à +65° selon position
+  const maxAngle = (65 * Math.PI) / 180;
+  const angle    = (clamped - 0.5) * 2 * maxAngle;
+
+  const speed = ballSpeedBase * H;
+  ball.vx = Math.sin(angle) * speed;
+  ball.vy = side === 'bottom' ? -Math.cos(angle) * speed : Math.cos(angle) * speed;
+
+  // Repositionner proprement pour éviter double-hit
+  if (side === 'bottom') ball.y = paddle.y - ball.r;
+  else                   ball.y = paddle.y + paddle.h + ball.r;
+
+  updateHUD();
+  checkCombo();
+  updateSpeedBar();
+}
+
+// ════════════════════════════════════
+//  HUD & EFFETS
+// ════════════════════════════════════
+function updateHUD() {
+  document.getElementById('hudScore').textContent = score;
+  document.getElementById('hudBest').textContent  = bestScore;
+}
+
+function checkCombo() {
+  if (COMBO_MILESTONES.includes(score)) {
+    showCombo(score);
+  }
+}
+
+let comboTimeout;
+function showCombo(n) {
+  const el = document.getElementById('comboFlash');
+  el.textContent = n + ' !';
+  el.style.opacity = '1';
+  clearTimeout(comboTimeout);
+  comboTimeout = setTimeout(() => { el.style.opacity = '0'; }, 700);
+}
+
+function updateSpeedBar() {
+  const pct = ((ballSpeedBase - BALL_SPEED_INIT) / (BALL_SPEED_MAX - BALL_SPEED_INIT)) * 100;
+  const fill = document.getElementById('speedFill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct > 70 ? 'var(--danger)' : 'var(--accent)';
+}
+
+// ════════════════════════════════════
+//  DESSIN
+// ════════════════════════════════════
+function draw() {
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!gameActive) return;
+
+  // Ligne centrale pointillée
+  ctx.setLineDash([8, 14]);
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, H/2);
+  ctx.lineTo(W, H/2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Raquette BAS
+  drawPaddle(paddleBottom);
+
+  // Raquette HAUT (retournée visuellement = même forme)
+  drawPaddle(paddleTop);
+
+  // Balle
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fill();
+
+  // Halo balle
+  const grad = ctx.createRadialGradient(ball.x, ball.y, ball.r * 0.5, ball.x, ball.y, ball.r * 3);
+  grad.addColorStop(0, 'rgba(224,255,79,0.15)');
+  grad.addColorStop(1, 'rgba(224,255,79,0)');
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r * 3, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+function drawPaddle(p) {
+  const r = p.h * 0.5; // arrondi = demi-hauteur = pilule
+  ctx.beginPath();
+  ctx.roundRect(p.x, p.y, p.w, p.h, r);
+  ctx.fillStyle = '#e0ff4f';
+  ctx.fill();
+}
+
+// ════════════════════════════════════
+//  LOOP
+// ════════════════════════════════════
+function loop() {
+  update();
+  draw();
+  animId = requestAnimationFrame(loop);
+}
+
+// ════════════════════════════════════
+//  START / END
+// ════════════════════════════════════
+function startGame() {
+  showScreen(null);
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('speedBar').classList.remove('hidden');
+  gameActive = true;
+  initGame();
+  if (animId) cancelAnimationFrame(animId);
+  loop();
+}
+
+function endGame() {
+  gameActive = false;
+  cancelAnimationFrame(animId);
+
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('speedBar').classList.add('hidden');
+
+  // Best score
+  let isRecord = false;
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('pongGyroBest', bestScore);
+    isRecord = true;
+  }
+
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('newRecord').textContent  = isRecord && score > 0 ? '★ Nouveau record !' : '';
+  document.getElementById('homeBest').textContent   = bestScore;
+
+  showScreen('over');
+}
+
+// ════════════════════════════════════
+//  NAVIGATION ÉCRANS
+// ════════════════════════════════════
+function showScreen(name) {
+  document.getElementById('screenHome').classList.add('hidden');
+  document.getElementById('screenOver').classList.add('hidden');
+  if (name === 'home') document.getElementById('screenHome').classList.remove('hidden');
+  if (name === 'over') document.getElementById('screenOver').classList.remove('hidden');
+}
+
+// ════════════════════════════════════
+//  IOS GYRO CHECK
+// ════════════════════════════════════
+function checkIOS() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (isIOS && typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    document.getElementById('btnGyroEnable').style.display = 'block';
+    document.getElementById('iosNotice').style.display     = 'block';
+  }
+}
+
+// ════════════════════════════════════
+//  EVENTS BOUTONS
+// ════════════════════════════════════
+document.getElementById('btnGyroEnable').addEventListener('click', () => {
+  startGyro();
+  document.getElementById('btnGyroEnable').textContent = 'Gyroscope autorisé';
+  document.getElementById('btnGyroEnable').disabled = true;
+});
+
+document.getElementById('btnStart').addEventListener('click', () => {
+  if (!gyroAvailable) startGyro();
+  startGame();
+});
+
+document.getElementById('btnRestart').addEventListener('click', startGame);
+
+document.getElementById('btnHome').addEventListener('click', () => {
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('speedBar').classList.add('hidden');
+  document.getElementById('homeBest').textContent = bestScore;
+  showScreen('home');
+});
+
+// ════════════════════════════════════
+//  INIT
+// ════════════════════════════════════
+resize();
+checkIOS();
+showScreen('home');
+document.getElementById('homeBest').textContent = bestScore;
+startGyro(); // tente sans permission (Android / desktop)
+</script>
+</body>
+</html>
