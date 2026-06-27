@@ -60,7 +60,7 @@
 
 <!-- ACCUEIL -->
 <div id="sHome" class="screen">
-  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v3</div></div>
+  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v4</div></div>
   <div><div class="best-label">Meilleur score</div><div class="best-value" id="homeBest">0</div></div>
   <div style="display:flex;flex-direction:column;gap:.8rem;width:100%;max-width:280px">
     <button class="btn" id="btnStart">Jouer</button>
@@ -121,27 +121,33 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xf0f2f5, 30, 55);
 
 // Caméra — vue quasi-dessus légèrement inclinée
-const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-// Portrait mobile : on recule plus
-function setCameraForAspect() {
-  const asp = window.innerWidth / window.innerHeight;
-  if (asp < 1) {
-    // Portrait
-    camera.position.set(0, 26, 13);
+// Caméra orthographique — vue strictement du dessus
+let camera = null;
+function buildCamera(w, h) {
+  const asp = w / h;
+  const halfH = TL / 2 + 3.0;
+  const halfW = halfH * asp;
+  if (!camera) {
+    camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, 100);
   } else {
-    // Paysage
-    camera.position.set(0, 20, 9);
+    camera.left   = -halfW;
+    camera.right  =  halfW;
+    camera.top    =  halfH;
+    camera.bottom = -halfH;
   }
+  camera.position.set(0, 30, 0);
   camera.lookAt(0, 0, 0);
   camera.updateProjectionMatrix();
 }
 
+function setCameraForAspect() { buildCamera(window.innerWidth, window.innerHeight); }
+
 function onResize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h);
-  camera.aspect = w / h;
-  setCameraForAspect();
+  buildCamera(w, h);
 }
+buildCamera(window.innerWidth, window.innerHeight);
 window.addEventListener('resize', onResize);
 window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
 onResize();
@@ -153,16 +159,16 @@ const ambient = new THREE.AmbientLight(0xdde8f5, 0.75);
 scene.add(ambient);
 
 const dirLight = new THREE.DirectionalLight(0xe8eeff, 0.85);
-dirLight.position.set(4, 16, 8);
+dirLight.position.set(2, 28, 4);
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(1024, 1024);
+dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.near = 0.5;
 dirLight.shadow.camera.far  = 60;
 dirLight.shadow.camera.left = -12;
 dirLight.shadow.camera.right = 12;
 dirLight.shadow.camera.top = 16;
 dirLight.shadow.camera.bottom = -16;
-dirLight.shadow.bias = -0.001;
+dirLight.shadow.bias = -0.0005; dirLight.shadow.radius = 6;
 scene.add(dirLight);
 
 // Lumière d'appoint douce de bas
@@ -213,6 +219,33 @@ const tableMesh = new THREE.Mesh(tableGeo, tableMat);
 tableMesh.position.y = -0.09;
 tableMesh.receiveShadow = true;
 scene.add(tableMesh);
+
+// ── BOÎTE À CHAUSSURE — 4 parois + fond ──
+const BOX_H = 1.8;
+const BOX_T = 0.25;
+const boxMat = new THREE.MeshLambertMaterial({ color: 0xedf0f8 });
+
+const wallDefs = [
+  [TW + BOX_T*2, BOX_H, BOX_T,   0, BOX_H/2 - 0.09,  TL/2 + BOX_T/2],
+  [TW + BOX_T*2, BOX_H, BOX_T,   0, BOX_H/2 - 0.09, -TL/2 - BOX_T/2],
+  [BOX_T, BOX_H, TL,  -TW/2 - BOX_T/2, BOX_H/2 - 0.09, 0],
+  [BOX_T, BOX_H, TL,   TW/2 + BOX_T/2, BOX_H/2 - 0.09, 0],
+];
+wallDefs.forEach(([w,h,d,x,y,z]) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), boxMat);
+  m.position.set(x,y,z);
+  m.receiveShadow = true; m.castShadow = true;
+  scene.add(m);
+});
+
+// Fond de la boîte
+const floorBox = new THREE.Mesh(
+  new THREE.BoxGeometry(TW, 0.1, TL),
+  new THREE.MeshLambertMaterial({ color: 0xe6eaf4 })
+);
+floorBox.position.y = -0.19;
+floorBox.receiveShadow = true;
+scene.add(floorBox);
 
 // Bordure table
 const edgeMat = new THREE.MeshLambertMaterial({ color: 0xe8ecf4 });
@@ -308,14 +341,14 @@ scene.add(paddleTop);
 // ═══════════════════════════════════════
 //  BALLE
 // ═══════════════════════════════════════
-const ballGeo = new THREE.SphereGeometry(BR, 20, 20);
+const ballGeo = new THREE.BoxGeometry(BR*2, BR*2, BR*2);
 const ballMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
 const ballMesh = new THREE.Mesh(ballGeo, ballMat);
 ballMesh.castShadow = true;
 scene.add(ballMesh);
 
 // Ombre projetée au sol (cercle plat)
-const shadowGeo = new THREE.CircleGeometry(BR * 0.8, 16);
+const shadowGeo = new THREE.PlaneGeometry(BR * 1.8, BR * 1.8);
 const shadowMat = new THREE.MeshBasicMaterial({ color: 0x8899bb, transparent: true, opacity: 0.28 });
 const ballShadow = new THREE.Mesh(shadowGeo, shadowMat);
 ballShadow.rotation.x = -Math.PI/2;
@@ -323,7 +356,7 @@ ballShadow.position.y = 0.005;
 scene.add(ballShadow);
 
 // Halo léger sous la balle
-const haloGeo = new THREE.CircleGeometry(BR * 1.8, 16);
+const haloGeo = new THREE.PlaneGeometry(BR * 4, BR * 4);
 const haloMat = new THREE.MeshBasicMaterial({ color: 0xaabbdd, transparent: true, opacity: 0.08 });
 const ballHalo = new THREE.Mesh(haloGeo, haloMat);
 ballHalo.rotation.x = -Math.PI/2;
