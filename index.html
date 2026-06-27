@@ -5,533 +5,528 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
-<title>Pong Gyro</title>
+<title>Pong Gyro 3D</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
+  * { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg: #0a0a0f;
-    --court: #0f0f1a;
-    --line: #1a1a2e;
-    --accent: #e0ff4f;
-    --white: #f0f0f0;
-    --dim: #555566;
-    --danger: #ff4f4f;
+    --bg:#0d0d0d;
+    --accent:#e0ff4f;
+    --dim:#444455;
+    --white:#f0f0f0;
+    --danger:#ff4f4f;
   }
+  html,body { width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Courier New',monospace;touch-action:none;user-select:none; }
 
-  html, body {
-    width: 100%; height: 100%;
-    overflow: hidden;
-    background: var(--bg);
-    font-family: 'Courier New', monospace;
-    touch-action: none;
-    user-select: none;
-  }
+  #c { position:fixed;top:0;left:0;width:100%;height:100%;display:block; }
 
-  /* ── ÉCRANS ── */
   .screen {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2rem;
-    padding: 2rem;
-    text-align: center;
-    z-index: 10;
-    background: var(--bg);
-    transition: opacity 0.3s;
+    position:fixed;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1.8rem;padding:2rem;
+    text-align:center;z-index:10;background:rgba(13,13,13,0.92);
+    backdrop-filter:blur(4px);transition:opacity .3s;
   }
-  .screen.hidden { opacity: 0; pointer-events: none; }
+  .screen.hidden{opacity:0;pointer-events:none;}
 
-  .title {
-    font-size: clamp(2.8rem, 12vw, 5rem);
-    font-weight: 900;
-    letter-spacing: -0.02em;
-    color: var(--accent);
-    line-height: 0.9;
-  }
-  .subtitle {
-    font-size: clamp(0.75rem, 3.5vw, 1rem);
-    color: var(--dim);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-  }
-  .best-label {
-    font-size: clamp(0.7rem, 3vw, 0.9rem);
-    color: var(--dim);
-    letter-spacing: 0.1em;
-  }
-  .best-value {
-    font-size: clamp(1.5rem, 7vw, 2.5rem);
-    color: var(--white);
-    font-weight: 700;
-  }
+  .title{font-size:clamp(2.5rem,11vw,4.5rem);font-weight:900;letter-spacing:-.02em;color:var(--accent);line-height:.9;}
+  .subtitle{font-size:clamp(.7rem,3vw,.9rem);color:var(--dim);letter-spacing:.18em;text-transform:uppercase;}
+  .best-label{font-size:clamp(.65rem,2.8vw,.85rem);color:var(--dim);letter-spacing:.1em;}
+  .best-value{font-size:clamp(1.4rem,6vw,2.2rem);color:var(--white);font-weight:700;}
 
-  .btn {
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    padding: 1rem 2.5rem;
-    font-family: inherit;
-    font-size: clamp(0.9rem, 4vw, 1.1rem);
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: transform 0.1s, background 0.1s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .btn:active { transform: scale(0.96); }
-  .btn.secondary {
-    background: transparent;
-    color: var(--dim);
-    border: 1px solid var(--dim);
-    font-size: clamp(0.75rem, 3.2vw, 0.9rem);
-  }
+  .btn{background:var(--accent);color:#0d0d0d;border:none;padding:.9rem 2.2rem;font-family:inherit;font-size:clamp(.85rem,3.8vw,1rem);font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:transform .1s;-webkit-tap-highlight-color:transparent;width:100%;max-width:280px;}
+  .btn:active{transform:scale(.96);}
+  .btn.sec{background:transparent;color:var(--dim);border:1px solid var(--dim);font-size:clamp(.7rem,3vw,.85rem);}
+  .hint{font-size:clamp(.65rem,2.8vw,.8rem);color:var(--dim);max-width:260px;line-height:1.7;}
+  .version{font-size:clamp(.6rem,2.5vw,.75rem);color:var(--dim);letter-spacing:.2em;margin-top:.35rem;opacity:.6;}
 
-  .ios-notice {
-    font-size: clamp(0.7rem, 3vw, 0.85rem);
-    color: var(--dim);
-    max-width: 280px;
-    line-height: 1.6;
-  }
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:.9rem 1.4rem;pointer-events:none;z-index:5;}
+  #hud.hidden{display:none;}
+  .hud-label{font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);}
+  .hud-value{font-size:clamp(1.3rem,5.5vw,1.9rem);font-weight:900;color:var(--accent);line-height:1;}
+  .hud-value.rec{color:var(--dim);font-size:clamp(.9rem,3.8vw,1.3rem);}
 
-  /* ── CANVAS ── */
-  #gameCanvas {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    display: block;
-  }
+  #flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(2rem,9vw,3rem);font-weight:900;color:var(--accent);pointer-events:none;z-index:6;opacity:0;transition:opacity .1s;letter-spacing:-.02em;}
 
-  /* ── HUD ── */
-  #hud {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    pointer-events: none;
-    z-index: 5;
-  }
-  #hud.hidden { display: none; }
+  #sbar{position:fixed;bottom:0;left:0;right:0;height:3px;background:#1a1a1a;z-index:5;pointer-events:none;}
+  #sfill{height:100%;background:var(--accent);width:0%;transition:width .3s,background .3s;}
+  #sbar.hidden{display:none;}
 
-  .hud-block { text-align: center; }
-  .hud-label {
-    font-size: 0.55rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--dim);
-  }
-  .hud-value {
-    font-size: clamp(1.4rem, 6vw, 2rem);
-    font-weight: 900;
-    color: var(--accent);
-    line-height: 1;
-  }
-  .hud-value.best { color: var(--dim); font-size: clamp(1rem, 4vw, 1.4rem); }
-
-  /* ── COMBO FLASH ── */
-  #comboFlash {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: clamp(2rem, 10vw, 3.5rem);
-    font-weight: 900;
-    color: var(--accent);
-    pointer-events: none;
-    z-index: 6;
-    opacity: 0;
-    transition: opacity 0.1s;
-    letter-spacing: -0.02em;
-  }
-
-  /* ── GAME OVER ── */
-  #screenOver .score-display {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  #finalScore {
-    font-size: clamp(3rem, 15vw, 6rem);
-    font-weight: 900;
-    color: var(--accent);
-    line-height: 1;
-  }
-  #finalLabel {
-    font-size: clamp(0.7rem, 3vw, 0.9rem);
-    color: var(--dim);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-  }
-  #newRecord {
-    font-size: clamp(0.8rem, 3.5vw, 1rem);
-    color: var(--danger);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-weight: 700;
-    min-height: 1.2em;
-  }
-
-  /* ── BARRE DE VITESSE ── */
-  #speedBar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--line);
-    z-index: 5;
-    pointer-events: none;
-  }
-  #speedFill {
-    height: 100%;
-    background: var(--accent);
-    width: 0%;
-    transition: width 0.3s, background 0.3s;
-  }
-  #speedBar.hidden { display: none; }
+  #finalScore{font-size:clamp(3rem,14vw,5.5rem);font-weight:900;color:var(--accent);line-height:1;}
+  #newRecord{font-size:clamp(.75rem,3.2vw,.95rem);color:var(--danger);letter-spacing:.1em;text-transform:uppercase;font-weight:700;min-height:1.2em;}
 </style>
 </head>
 <body>
 
-<!-- ── ÉCRAN ACCUEIL ── -->
-<div id="screenHome" class="screen">
-  <div>
-    <div class="title">PONG<br>GYRO</div>
-    <div class="subtitle">Coopératif · 2 joueurs</div>
-  </div>
-  <div class="hud-block">
-    <div class="best-label">Meilleur score</div>
-    <div class="best-value" id="homeBest">0</div>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:0.8rem;width:100%;max-width:280px">
+<canvas id="c"></canvas>
+
+<!-- ACCUEIL -->
+<div id="sHome" class="screen">
+  <div><div class="title">PONG<br>GYRO</div><div class="subtitle">3D · Coopératif · 2 joueurs</div><div class="version">v2</div></div>
+  <div><div class="best-label">Meilleur score</div><div class="best-value" id="homeBest">0</div></div>
+  <div style="display:flex;flex-direction:column;gap:.8rem;width:100%;max-width:280px">
     <button class="btn" id="btnStart">Jouer</button>
-    <button class="btn secondary" id="btnGyroEnable" style="display:none">Autoriser le gyroscope (iOS)</button>
+    <button class="btn sec" id="btnIOS" style="display:none">Autoriser le gyroscope (iOS)</button>
   </div>
-  <div class="ios-notice" id="iosNotice" style="display:none">
-    Sur iOS, appuie sur "Autoriser le gyroscope" avant de jouer. Tiens le téléphone à deux mains, verticalement.
-  </div>
-  <div class="ios-notice" style="display:block">
-    Tenez le téléphone à deux mains.<br>Inclinez ensemble pour bouger les raquettes.
+  <div class="hint">Tenez le téléphone à deux mains.<br>Inclinez ensemble pour bouger les raquettes.</div>
+</div>
+
+<!-- GAME OVER -->
+<div id="sOver" class="screen hidden">
+  <div><div class="best-label">Échanges réussis</div><div id="finalScore">0</div><div id="newRecord"></div></div>
+  <div style="display:flex;flex-direction:column;gap:.8rem;width:100%;max-width:280px">
+    <button class="btn" id="btnReplay">Rejouer</button>
+    <button class="btn sec" id="btnHome">Accueil</button>
   </div>
 </div>
 
-<!-- ── ÉCRAN GAME OVER ── -->
-<div id="screenOver" class="screen hidden">
-  <div class="score-display">
-    <div class="best-label">Échanges réussis</div>
-    <div id="finalScore">0</div>
-    <div id="newRecord"></div>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:0.8rem;width:100%;max-width:280px">
-    <button class="btn" id="btnRestart">Rejouer</button>
-    <button class="btn secondary" id="btnHome">Accueil</button>
-  </div>
-</div>
-
-<!-- ── CANVAS ── -->
-<canvas id="gameCanvas"></canvas>
-
-<!-- ── HUD ── -->
+<!-- HUD -->
 <div id="hud" class="hidden">
-  <div class="hud-block">
-    <div class="hud-label">Record</div>
-    <div class="hud-value best" id="hudBest">0</div>
-  </div>
-  <div class="hud-block">
-    <div class="hud-label">Échanges</div>
-    <div class="hud-value" id="hudScore">0</div>
-  </div>
+  <div class="hud-block"><div class="hud-label">Record</div><div class="hud-value rec" id="hudBest">0</div></div>
+  <div class="hud-block"><div class="hud-label">Échanges</div><div class="hud-value" id="hudScore">0</div></div>
 </div>
 
-<!-- ── COMBO FLASH ── -->
-<div id="comboFlash"></div>
+<div id="flash"></div>
+<div id="sbar" class="hidden"><div id="sfill"></div></div>
 
-<!-- ── BARRE VITESSE ── -->
-<div id="speedBar" class="hidden"><div id="speedFill"></div></div>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ════════════════════════════════════
-//  CONSTANTES & CONFIG
-// ════════════════════════════════════
-const PADDLE_H_RATIO  = 0.018;  // épaisseur raquette / hauteur écran
-const PADDLE_W_RATIO  = 0.38;   // largeur raquette / largeur écran
-const PADDLE_MARGIN   = 0.10;   // distance bord haut/bas / hauteur écran
-const BALL_R_RATIO    = 0.022;  // rayon balle / largeur écran
-const BALL_SPEED_INIT = 0.007;  // vitesse initiale / hauteur écran par frame
-const BALL_SPEED_INC  = 0.00008;// accélération par échange
-const BALL_SPEED_MAX  = 0.022;
-const GYRO_SENS       = 3.5;    // sensibilité gyro
-const GYRO_SMOOTHING  = 0.12;   // lissage (0=figé, 1=instantané)
-const COMBO_MILESTONES= [5, 10, 20, 30, 50, 75, 100];
+// ═══════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════
+const TW = 14;       // largeur table
+const TL = 22;       // longueur table
+const PW = 4.2;      // largeur raquette
+const PD = 0.35;     // profondeur raquette
+const PH = 0.18;     // épaisseur raquette
+const BR = 0.22;     // rayon balle
+const NET_H = 0.28;  // hauteur filet
+const PMARG = 1.4;   // marge raquette depuis bord
+const GYRO_SENS = 3.8;
+const GYRO_SMOOTH = 0.10;
+const SPEED_INIT = 0.09;
+const SPEED_INC  = 0.0012;
+const SPEED_MAX  = 0.28;
+const COMBOS = [5,10,20,30,50,75,100];
 
-// ════════════════════════════════════
-//  ÉTAT
-// ════════════════════════════════════
-const canvas = document.getElementById('gameCanvas');
-const ctx    = canvas.getContext('2d');
+// ═══════════════════════════════════════
+//  THREE.JS SETUP
+// ═══════════════════════════════════════
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x0d0d0d);
 
-let W, H;          // dimensions canvas
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0d0d0d, 30, 55);
+
+// Caméra — vue quasi-dessus légèrement inclinée
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+// Portrait mobile : on recule plus
+function setCameraForAspect() {
+  const asp = window.innerWidth / window.innerHeight;
+  if (asp < 1) {
+    // Portrait
+    camera.position.set(0, 22, 8);
+  } else {
+    // Paysage
+    camera.position.set(0, 18, 6);
+  }
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+}
+
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  setCameraForAspect();
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
+onResize();
+
+// ═══════════════════════════════════════
+//  LUMIÈRES
+// ═══════════════════════════════════════
+const ambient = new THREE.AmbientLight(0xffffff, 0.45);
+scene.add(ambient);
+
+const dirLight = new THREE.DirectionalLight(0xfff8e8, 1.1);
+dirLight.position.set(4, 16, 8);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(1024, 1024);
+dirLight.shadow.camera.near = 0.5;
+dirLight.shadow.camera.far  = 60;
+dirLight.shadow.camera.left = -12;
+dirLight.shadow.camera.right = 12;
+dirLight.shadow.camera.top = 16;
+dirLight.shadow.camera.bottom = -16;
+dirLight.shadow.bias = -0.001;
+scene.add(dirLight);
+
+// Lumière d'appoint douce de bas
+const fillLight = new THREE.DirectionalLight(0xaaccff, 0.2);
+fillLight.position.set(-3, 5, -6);
+scene.add(fillLight);
+
+// ═══════════════════════════════════════
+//  TABLE
+// ═══════════════════════════════════════
+
+// Surface principale — texture bois procédurale via canvas
+function makeWoodTexture() {
+  const size = 512;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+
+  // Base bois vert foncé (table de ping-pong)
+  const base = cx.createLinearGradient(0, 0, size, size);
+  base.addColorStop(0,   '#1a4a1a');
+  base.addColorStop(0.3, '#1e5220');
+  base.addColorStop(0.6, '#174517');
+  base.addColorStop(1,   '#1b4c1b');
+  cx.fillStyle = base;
+  cx.fillRect(0, 0, size, size);
+
+  // Veines bois subtiles
+  for (let i = 0; i < 18; i++) {
+    const y = Math.random() * size;
+    const grad = cx.createLinearGradient(0, y-2, size, y+2);
+    grad.addColorStop(0,   'rgba(0,0,0,0)');
+    grad.addColorStop(0.2, 'rgba(0,0,0,0.07)');
+    grad.addColorStop(0.5, 'rgba(0,0,0,0.12)');
+    grad.addColorStop(0.8, 'rgba(0,0,0,0.07)');
+    grad.addColorStop(1,   'rgba(0,0,0,0)');
+    cx.fillStyle = grad;
+    cx.fillRect(0, y-3, size, 6);
+  }
+
+  // Reflet central
+  const shine = cx.createRadialGradient(size*.5, size*.5, 10, size*.5, size*.5, size*.6);
+  shine.addColorStop(0,   'rgba(255,255,255,0.06)');
+  shine.addColorStop(1,   'rgba(255,255,255,0)');
+  cx.fillStyle = shine;
+  cx.fillRect(0, 0, size, size);
+
+  return new THREE.CanvasTexture(cv);
+}
+
+const tableGeo = new THREE.BoxGeometry(TW, 0.18, TL);
+const tableMat = new THREE.MeshLambertMaterial({ map: makeWoodTexture() });
+const tableMesh = new THREE.Mesh(tableGeo, tableMat);
+tableMesh.position.y = -0.09;
+tableMesh.receiveShadow = true;
+scene.add(tableMesh);
+
+// Bordure table
+const edgeMat = new THREE.MeshLambertMaterial({ color: 0x8B5E1A });
+[[TW+.06, 0.22, 0.28, 0, 0, TL/2+.14],[TW+.06, 0.22, 0.28, 0, 0, -TL/2-.14],
+ [0.28, 0.22, TL, TW/2+.14, 0, 0],  [0.28, 0.22, TL, -TW/2-.14, 0, 0]
+].forEach(([w,h,d,x,y,z]) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), edgeMat);
+  m.position.set(x, y, z);
+  m.receiveShadow = true;
+  scene.add(m);
+});
+
+// Lignes blanches sur la table
+function addLine(w, d, x, z) {
+  const geo = new THREE.PlaneGeometry(w, d);
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+  const m = new THREE.Mesh(geo, mat);
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(x, 0.01, z);
+  scene.add(m);
+}
+// Ligne centrale
+addLine(TW - 0.3, 0.06, 0, 0);
+// Lignes de fond
+addLine(TW - 0.3, 0.06, 0,  TL/2 - 0.3);
+addLine(TW - 0.3, 0.06, 0, -TL/2 + 0.3);
+// Ligne médiane longitudinale
+addLine(0.06, TL - 0.3, 0, 0);
+
+// ═══════════════════════════════════════
+//  FILET
+// ═══════════════════════════════════════
+const netGroup = new THREE.Group();
+
+// Poteau gauche et droit
+[TW/2 + 0.1, -TW/2 - 0.1].forEach(x => {
+  const p = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.06, NET_H + 0.1, 8),
+    new THREE.MeshLambertMaterial({ color: 0xcccccc })
+  );
+  p.position.set(x, NET_H/2, 0);
+  p.castShadow = true;
+  netGroup.add(p);
+});
+
+// Filet (grille fine)
+const netMat = new THREE.MeshLambertMaterial({ color: 0xdddddd, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+// Plan principal filet
+const netMesh = new THREE.Mesh(new THREE.PlaneGeometry(TW + 0.2, NET_H), netMat);
+netMesh.position.set(0, NET_H/2, 0);
+netMesh.castShadow = true;
+netGroup.add(netMesh);
+
+// Bande blanche haut du filet
+const topBand = new THREE.Mesh(
+  new THREE.BoxGeometry(TW + 0.3, 0.05, 0.04),
+  new THREE.MeshLambertMaterial({ color: 0xffffff })
+);
+topBand.position.set(0, NET_H + 0.025, 0);
+netGroup.add(topBand);
+
+scene.add(netGroup);
+
+// ═══════════════════════════════════════
+//  RAQUETTES
+// ═══════════════════════════════════════
+function makePaddle(color) {
+  const g = new THREE.Group();
+  // Corps principal
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(PW, PH, PD),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  body.castShadow = true;
+  g.add(body);
+  // Tranche blanche
+  const edge = new THREE.Mesh(
+    new THREE.BoxGeometry(PW + 0.02, PH * 0.4, 0.04),
+    new THREE.MeshLambertMaterial({ color: 0xffffff })
+  );
+  edge.position.z = PD/2 + 0.02;
+  g.add(edge);
+  return g;
+}
+
+const paddleBot = makePaddle(0xe03030); // rouge joueur bas
+const paddleTop = makePaddle(0x3060e0); // bleu joueur haut
+paddleBot.position.set(0, PH/2 + 0.01,  TL/2 - PMARG);
+paddleTop.position.set(0, PH/2 + 0.01, -TL/2 + PMARG);
+scene.add(paddleBot);
+scene.add(paddleTop);
+
+// ═══════════════════════════════════════
+//  BALLE
+// ═══════════════════════════════════════
+const ballGeo = new THREE.SphereGeometry(BR, 20, 20);
+const ballMat = new THREE.MeshLambertMaterial({ color: 0xf5f5e8 });
+const ballMesh = new THREE.Mesh(ballGeo, ballMat);
+ballMesh.castShadow = true;
+scene.add(ballMesh);
+
+// Ombre projetée au sol (cercle plat)
+const shadowGeo = new THREE.CircleGeometry(BR * 0.8, 16);
+const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 });
+const ballShadow = new THREE.Mesh(shadowGeo, shadowMat);
+ballShadow.rotation.x = -Math.PI/2;
+ballShadow.position.y = 0.005;
+scene.add(ballShadow);
+
+// Halo léger sous la balle
+const haloGeo = new THREE.CircleGeometry(BR * 1.8, 16);
+const haloMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06 });
+const ballHalo = new THREE.Mesh(haloGeo, haloMat);
+ballHalo.rotation.x = -Math.PI/2;
+ballHalo.position.y = 0.004;
+scene.add(ballHalo);
+
+// ═══════════════════════════════════════
+//  ÉTAT JEU
+// ═══════════════════════════════════════
 let gameActive = false;
-let bestScore  = parseInt(localStorage.getItem('pongGyroBest') || '0');
-
-let ball, paddleBottom, paddleTop;
-let score, ballSpeedBase;
-let gyroGamma = 0;     // valeur brute
-let gyroSmooth = 0;    // valeur lissée
-let gyroAvailable = false;
+let score = 0;
+let bestScore = parseInt(localStorage.getItem('pongGyro3DBest') || '0');
+let ballVX = 0, ballVZ = 0;
+let ballX = 0, ballZ = 0;
+let speedBase = SPEED_INIT;
+let gyroRaw = 0, gyroSmoothed = 0;
+let gyroOK = false;
 let animId;
 
-// ════════════════════════════════════
-//  RESIZE
-// ════════════════════════════════════
-function resize() {
-  W = canvas.width  = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  if (gameActive) initPositions();
-}
-window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+// ═══════════════════════════════════════
+//  GYROSCOPE
+// ═══════════════════════════════════════
+window.addEventListener('deviceorientation', e => {
+  if (e.gamma !== null) gyroRaw = e.gamma;
+});
 
-// ════════════════════════════════════
-//  INIT JEU
-// ════════════════════════════════════
+function requestGyro() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(r => { if (r === 'granted') gyroOK = true; })
+      .catch(console.error);
+  } else {
+    gyroOK = true;
+  }
+}
+
+// ═══════════════════════════════════════
+//  INIT PARTIE
+// ═══════════════════════════════════════
 function initGame() {
   score = 0;
-  ballSpeedBase = BALL_SPEED_INIT;
-  gyroSmooth = 0;
-  initPositions();
+  speedBase = SPEED_INIT;
+  gyroSmoothed = 0;
+  ballX = 0;
+  ballZ = 0;
+
+  const angle = (Math.random() * 0.5 + 0.25) * Math.PI;
+  const sign  = Math.random() < 0.5 ? 1 : -1;
+  ballVX = Math.cos(angle) * speedBase * (Math.random() < 0.5 ? 1 : -1);
+  ballVZ = Math.sin(angle) * speedBase * sign;
+
+  updateBallMesh();
+  updatePaddleMesh(0);
   updateHUD();
 }
 
-function initPositions() {
-  const pw = W * PADDLE_W_RATIO;
-  const ph = H * PADDLE_H_RATIO;
-  const pm = H * PADDLE_MARGIN;
-  const br = W * BALL_R_RATIO;
-
-  paddleBottom = { x: W/2 - pw/2, y: H - pm - ph, w: pw, h: ph };
-  paddleTop    = { x: W/2 - pw/2, y: pm,           w: pw, h: ph };
-
-  // direction aléatoire vers le bas ou vers le haut
-  const angle = (Math.random() * 0.6 + 0.2) * Math.PI; // entre 36° et 108°
-  const dir   = Math.random() < 0.5 ? 1 : -1;
-  const speed = ballSpeedBase * H;
-
-  ball = {
-    x: W/2, y: H/2,
-    r: br,
-    vx: Math.cos(angle) * speed * (Math.random() < 0.5 ? 1 : -1),
-    vy: Math.sin(angle) * speed * dir,
-  };
+function updateBallMesh() {
+  ballMesh.position.set(ballX, BR + 0.01, ballZ);
+  ballShadow.position.x = ballX;
+  ballShadow.position.z = ballZ;
+  ballHalo.position.x = ballX;
+  ballHalo.position.z = ballZ;
 }
 
-// ════════════════════════════════════
-//  GYROSCOPE
-// ════════════════════════════════════
-function startGyro() {
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    // iOS 13+
-    DeviceOrientationEvent.requestPermission()
-      .then(response => {
-        if (response === 'granted') {
-          gyroAvailable = true;
-          window.addEventListener('deviceorientation', onGyro);
-        }
-      }).catch(console.error);
-  } else {
-    gyroAvailable = true;
-    window.addEventListener('deviceorientation', onGyro);
-  }
+function updatePaddleMesh(px) {
+  paddleBot.position.x = px;
+  paddleTop.position.x = px;
 }
 
-function onGyro(e) {
-  // gamma : inclinaison gauche/droite (-90 à 90)
-  if (e.gamma !== null) gyroGamma = e.gamma;
-}
-
-// ════════════════════════════════════
-//  MISE À JOUR
-// ════════════════════════════════════
+// ═══════════════════════════════════════
+//  LOGIQUE JEU
+// ═══════════════════════════════════════
 function update() {
   if (!gameActive) return;
 
-  // Gyro → déplacement raquettes (miroir)
-  gyroSmooth += (gyroGamma - gyroSmooth) * GYRO_SMOOTHING;
-  const move = gyroSmooth * GYRO_SENS;
+  // Gyro → mouvement raquettes
+  gyroSmoothed += (gyroRaw - gyroSmoothed) * GYRO_SMOOTH;
+  const move = gyroSmoothed * GYRO_SENS * 0.02;
+  let px = paddleBot.position.x + move;
+  const halfField = TW/2 - PW/2;
+  px = Math.max(-halfField, Math.min(halfField, px));
+  updatePaddleMesh(px);
 
-  const pw = paddleBottom.w;
-
-  // Raquette bas
-  paddleBottom.x += move;
-  paddleBottom.x  = Math.max(0, Math.min(W - pw, paddleBottom.x));
-
-  // Raquette haut (même direction = miroir naturel)
-  paddleTop.x = paddleBottom.x;
-
-  // Balle
-  ball.x += ball.vx;
-  ball.y += ball.vy;
+  // Mouvement balle
+  ballX += ballVX;
+  ballZ += ballVZ;
 
   // Rebond murs gauche/droite
-  if (ball.x - ball.r < 0) {
-    ball.x  = ball.r;
-    ball.vx = Math.abs(ball.vx);
-  }
-  if (ball.x + ball.r > W) {
-    ball.x  = W - ball.r;
-    ball.vx = -Math.abs(ball.vx);
+  const wallX = TW/2 - BR;
+  if (ballX < -wallX) { ballX = -wallX; ballVX = Math.abs(ballVX); }
+  if (ballX >  wallX) { ballX =  wallX; ballVX = -Math.abs(ballVX); }
+
+  // Collision raquette BAS (Z positif)
+  const botZ = paddleBot.position.z;
+  if (ballVZ > 0 &&
+      ballZ + BR >= botZ - PD/2 &&
+      ballZ - BR <= botZ + PD/2 &&
+      ballX >= px - PW/2 &&
+      ballX <= px + PW/2) {
+    hitPaddle(px, 'bot');
   }
 
-  // Collision raquette BAS
-  if (ball.vy > 0 &&
-      ball.y + ball.r >= paddleBottom.y &&
-      ball.y + ball.r <= paddleBottom.y + paddleBottom.h + Math.abs(ball.vy) &&
-      ball.x >= paddleBottom.x &&
-      ball.x <= paddleBottom.x + paddleBottom.w) {
-    hitPaddle(paddleBottom, 'bottom');
+  // Collision raquette HAUT (Z négatif)
+  const topZ = paddleTop.position.z;
+  if (ballVZ < 0 &&
+      ballZ - BR <= topZ + PD/2 &&
+      ballZ + BR >= topZ - PD/2 &&
+      ballX >= px - PW/2 &&
+      ballX <= px + PW/2) {
+    hitPaddle(px, 'top');
   }
 
-  // Collision raquette HAUT
-  if (ball.vy < 0 &&
-      ball.y - ball.r <= paddleTop.y + paddleTop.h &&
-      ball.y - ball.r >= paddleTop.y - Math.abs(ball.vy) &&
-      ball.x >= paddleTop.x &&
-      ball.x <= paddleTop.x + paddleTop.w) {
-    hitPaddle(paddleTop, 'top');
-  }
-
-  // Balle sortie (haut ou bas) → game over
-  if (ball.y + ball.r < 0 || ball.y - ball.r > H) {
+  // Balle sort du terrain
+  if (ballZ > TL/2 + 1 || ballZ < -TL/2 - 1) {
     endGame();
+    return;
   }
+
+  updateBallMesh();
+
+  // Rotation légère de la balle (cosmétique)
+  ballMesh.rotation.x += ballVZ * 0.4;
+  ballMesh.rotation.z -= ballVX * 0.4;
 }
 
-function hitPaddle(paddle, side) {
+function hitPaddle(px, side) {
   score++;
-  ballSpeedBase = Math.min(BALL_SPEED_INIT + score * BALL_SPEED_INC, BALL_SPEED_MAX);
+  speedBase = Math.min(SPEED_INIT + score * SPEED_INC, SPEED_MAX);
 
-  // Position relative sur la raquette (0 = gauche, 1 = droite)
-  const rel = (ball.x - paddle.x) / paddle.w;
+  const rel = (ballX - (px - PW/2)) / PW;
   const clamped = Math.max(0.05, Math.min(0.95, rel));
+  const maxAngle = 65 * Math.PI / 180;
+  const angle = (clamped - 0.5) * 2 * maxAngle;
 
-  // Angle de sortie : de -65° à +65° selon position
-  const maxAngle = (65 * Math.PI) / 180;
-  const angle    = (clamped - 0.5) * 2 * maxAngle;
+  const spd = speedBase;
+  ballVX = Math.sin(angle) * spd;
+  ballVZ = side === 'bot' ? -Math.cos(angle) * spd : Math.cos(angle) * spd;
 
-  const speed = ballSpeedBase * H;
-  ball.vx = Math.sin(angle) * speed;
-  ball.vy = side === 'bottom' ? -Math.cos(angle) * speed : Math.cos(angle) * speed;
-
-  // Repositionner proprement pour éviter double-hit
-  if (side === 'bottom') ball.y = paddle.y - ball.r;
-  else                   ball.y = paddle.y + paddle.h + ball.r;
+  // Repositionnement anti-double-hit
+  const pz = side === 'bot' ? paddleBot.position.z : paddleTop.position.z;
+  ballZ = side === 'bot' ? pz - PD/2 - BR - 0.01 : pz + PD/2 + BR + 0.01;
 
   updateHUD();
   checkCombo();
   updateSpeedBar();
+
+  // Flash raquette
+  const paddle = side === 'bot' ? paddleBot : paddleTop;
+  const origY = paddle.position.y;
+  paddle.position.y = origY + 0.15;
+  setTimeout(() => { paddle.position.y = origY; }, 80);
 }
 
-// ════════════════════════════════════
-//  HUD & EFFETS
-// ════════════════════════════════════
+// ═══════════════════════════════════════
+//  HUD / EFFETS
+// ═══════════════════════════════════════
 function updateHUD() {
   document.getElementById('hudScore').textContent = score;
   document.getElementById('hudBest').textContent  = bestScore;
 }
 
+const COMBOS_SET = new Set(COMBOS);
+let flashTO;
 function checkCombo() {
-  if (COMBO_MILESTONES.includes(score)) {
-    showCombo(score);
+  if (COMBOS_SET.has(score)) {
+    const el = document.getElementById('flash');
+    el.textContent = score + ' !';
+    el.style.opacity = '1';
+    clearTimeout(flashTO);
+    flashTO = setTimeout(() => { el.style.opacity = '0'; }, 700);
   }
 }
 
-let comboTimeout;
-function showCombo(n) {
-  const el = document.getElementById('comboFlash');
-  el.textContent = n + ' !';
-  el.style.opacity = '1';
-  clearTimeout(comboTimeout);
-  comboTimeout = setTimeout(() => { el.style.opacity = '0'; }, 700);
-}
-
 function updateSpeedBar() {
-  const pct = ((ballSpeedBase - BALL_SPEED_INIT) / (BALL_SPEED_MAX - BALL_SPEED_INIT)) * 100;
-  const fill = document.getElementById('speedFill');
+  const pct = ((speedBase - SPEED_INIT) / (SPEED_MAX - SPEED_INIT)) * 100;
+  const fill = document.getElementById('sfill');
   fill.style.width = pct + '%';
   fill.style.background = pct > 70 ? 'var(--danger)' : 'var(--accent)';
 }
 
-// ════════════════════════════════════
-//  DESSIN
-// ════════════════════════════════════
-function draw() {
-  ctx.fillStyle = '#0a0a0f';
-  ctx.fillRect(0, 0, W, H);
-
-  if (!gameActive) return;
-
-  // Ligne centrale pointillée
-  ctx.setLineDash([8, 14]);
-  ctx.strokeStyle = '#1a1a2e';
-  ctx.lineWidth   = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(0, H/2);
-  ctx.lineTo(W, H/2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Raquette BAS
-  drawPaddle(paddleBottom);
-
-  // Raquette HAUT (retournée visuellement = même forme)
-  drawPaddle(paddleTop);
-
-  // Balle
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fillStyle = '#f0f0f0';
-  ctx.fill();
-
-  // Halo balle
-  const grad = ctx.createRadialGradient(ball.x, ball.y, ball.r * 0.5, ball.x, ball.y, ball.r * 3);
-  grad.addColorStop(0, 'rgba(224,255,79,0.15)');
-  grad.addColorStop(1, 'rgba(224,255,79,0)');
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r * 3, 0, Math.PI * 2);
-  ctx.fillStyle = grad;
-  ctx.fill();
-}
-
-function drawPaddle(p) {
-  const r = p.h * 0.5; // arrondi = demi-hauteur = pilule
-  ctx.beginPath();
-  ctx.roundRect(p.x, p.y, p.w, p.h, r);
-  ctx.fillStyle = '#e0ff4f';
-  ctx.fill();
-}
-
-// ════════════════════════════════════
-//  LOOP
-// ════════════════════════════════════
+// ═══════════════════════════════════════
+//  RENDER LOOP
+// ═══════════════════════════════════════
 function loop() {
   update();
-  draw();
+  renderer.render(scene, camera);
   animId = requestAnimationFrame(loop);
 }
 
-// ════════════════════════════════════
+// ═══════════════════════════════════════
 //  START / END
-// ════════════════════════════════════
+// ═══════════════════════════════════════
 function startGame() {
   showScreen(null);
   document.getElementById('hud').classList.remove('hidden');
-  document.getElementById('speedBar').classList.remove('hidden');
+  document.getElementById('sbar').classList.remove('hidden');
   gameActive = true;
   initGame();
   if (animId) cancelAnimationFrame(animId);
@@ -540,79 +535,66 @@ function startGame() {
 
 function endGame() {
   gameActive = false;
-  cancelAnimationFrame(animId);
-
   document.getElementById('hud').classList.add('hidden');
-  document.getElementById('speedBar').classList.add('hidden');
+  document.getElementById('sbar').classList.add('hidden');
 
-  // Best score
-  let isRecord = false;
+  let rec = false;
   if (score > bestScore) {
     bestScore = score;
-    localStorage.setItem('pongGyroBest', bestScore);
-    isRecord = true;
+    localStorage.setItem('pongGyro3DBest', bestScore);
+    rec = true;
   }
-
   document.getElementById('finalScore').textContent = score;
-  document.getElementById('newRecord').textContent  = isRecord && score > 0 ? '★ Nouveau record !' : '';
+  document.getElementById('newRecord').textContent  = rec && score > 0 ? '★ Nouveau record !' : '';
   document.getElementById('homeBest').textContent   = bestScore;
-
   showScreen('over');
 }
 
-// ════════════════════════════════════
-//  NAVIGATION ÉCRANS
-// ════════════════════════════════════
+// ═══════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════
 function showScreen(name) {
-  document.getElementById('screenHome').classList.add('hidden');
-  document.getElementById('screenOver').classList.add('hidden');
-  if (name === 'home') document.getElementById('screenHome').classList.remove('hidden');
-  if (name === 'over') document.getElementById('screenOver').classList.remove('hidden');
+  document.getElementById('sHome').classList.add('hidden');
+  document.getElementById('sOver').classList.add('hidden');
+  if (name === 'home') document.getElementById('sHome').classList.remove('hidden');
+  if (name === 'over') document.getElementById('sOver').classList.remove('hidden');
 }
 
-// ════════════════════════════════════
-//  IOS GYRO CHECK
-// ════════════════════════════════════
-function checkIOS() {
+// iOS check
+(function() {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  if (isIOS && typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    document.getElementById('btnGyroEnable').style.display = 'block';
-    document.getElementById('iosNotice').style.display     = 'block';
+  if (isIOS && typeof DeviceOrientationEvent?.requestPermission === 'function') {
+    document.getElementById('btnIOS').style.display = 'block';
   }
-}
+})();
 
-// ════════════════════════════════════
-//  EVENTS BOUTONS
-// ════════════════════════════════════
-document.getElementById('btnGyroEnable').addEventListener('click', () => {
-  startGyro();
-  document.getElementById('btnGyroEnable').textContent = 'Gyroscope autorisé';
-  document.getElementById('btnGyroEnable').disabled = true;
+document.getElementById('btnIOS').addEventListener('click', () => {
+  requestGyro();
+  const b = document.getElementById('btnIOS');
+  b.textContent = 'Gyroscope autorisé';
+  b.disabled = true;
 });
 
 document.getElementById('btnStart').addEventListener('click', () => {
-  if (!gyroAvailable) startGyro();
+  requestGyro();
   startGame();
 });
-
-document.getElementById('btnRestart').addEventListener('click', startGame);
-
+document.getElementById('btnReplay').addEventListener('click', startGame);
 document.getElementById('btnHome').addEventListener('click', () => {
   document.getElementById('hud').classList.add('hidden');
-  document.getElementById('speedBar').classList.add('hidden');
+  document.getElementById('sbar').classList.add('hidden');
   document.getElementById('homeBest').textContent = bestScore;
   showScreen('home');
 });
 
-// ════════════════════════════════════
+// ═══════════════════════════════════════
 //  INIT
-// ════════════════════════════════════
-resize();
-checkIOS();
-showScreen('home');
+// ═══════════════════════════════════════
 document.getElementById('homeBest').textContent = bestScore;
-startGyro(); // tente sans permission (Android / desktop)
+showScreen('home');
+// Lancer le rendu 3D même sur l'écran d'accueil
+loop();
+requestGyro();
 </script>
 </body>
 </html>
